@@ -1,4 +1,6 @@
 #项目所有内容均通过Cursor通过自然语言对话生成
+TodoList.exe文件可直接运行，不需要本地有python环境。
+
 # TodoList Desktop Widget
 ![alt text](image.png)
 一个简洁美观的桌面待办事项小部件，帮助你更好地管理日常任务。
