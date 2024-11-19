@@ -4,7 +4,7 @@ from build import CONFIG_DATA  # Import CONFIG_DATA from build.py
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QPushButton, QLineEdit, QComboBox, 
                             QDateTimeEdit, QLabel, QTableWidget, QTableWidgetItem,
-                            QHeaderView, QSizePolicy, QDialog, QMenu, QCheckBox, QGraphicsOpacityEffect)
+                            QHeaderView, QSizePolicy, QDialog, QMenu, QCheckBox, QGraphicsOpacityEffect, QCalendarWidget)
 from PyQt6.QtCore import Qt, QDateTime, QPoint, QRect, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtCore import QDate
@@ -903,21 +903,98 @@ class TodoWidget(QMainWindow):
         # 截止时间
         deadline = QDateTime.fromString(task['deadline'], 'yyyy-MM-dd')
         deadline_str = deadline.toString('MM-dd')
-        deadline_item = QTableWidgetItem(deadline_str)
-        deadline_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # 创建日期选择按钮
+        date_btn = QPushButton(deadline_str)
+        date_btn.setFixedSize(50, 24)
+        
+        # 设置日期按钮样式
         if task.get('completed', False):
-            deadline_item.setForeground(QColor('#999999'))
-            font = deadline_item.font()
-            font.setStrikeOut(True)
-            deadline_item.setFont(font)
+            date_btn.setStyleSheet("""
+                QPushButton {
+                    border: none;
+                    background: transparent;
+                    color: #999999;
+                    text-decoration: line-through;
+                }
+            """)
+            date_btn.setEnabled(False)
         else:
-         # 只比较日期部分
-            deadline_date = deadline.date()
-            current_date = QDate.currentDate()
-            if deadline_date < current_date:
-                deadline_item.setForeground(QColor('red'))
+            # 检查是否过期
+            if deadline.date() < QDate.currentDate():
+                text_color = 'red'
+            else:
+                text_color = 'black'
+                
+            date_btn.setStyleSheet(f"""
+                QPushButton {{
+                    border: none;
+                    background: transparent;
+                    color: {text_color};
+                }}
+                QPushButton:hover {{
+                    background-color: #ffecef;
+                }}
+            """)
             
-        self.task_table.setItem(current_row, 2, deadline_item)
+            # 创建日历选择器
+            def show_calendar():
+                calendar = QCalendarWidget(self)
+                calendar.setWindowFlags(Qt.WindowType.Popup)
+                calendar.setGridVisible(True)
+                
+                # 设置日历样式
+                calendar.setStyleSheet("""
+                    QCalendarWidget {
+                        background-color: white;
+                        border: 1px solid #ffccd5;
+                    }
+                    QCalendarWidget QToolButton {
+                        color: black;
+                        background-color: transparent;
+                        border: none;
+                    }
+                    QCalendarWidget QToolButton:hover {
+                        background-color: #ffecef;
+                    }
+                    QCalendarWidget QMenu {
+                        background-color: white;
+                        border: 1px solid #ffccd5;
+                    }
+                    QCalendarWidget QSpinBox {
+                        border: 1px solid #ffccd5;
+                        border-radius: 2px;
+                    }
+                    QCalendarWidget QTableView {
+                        selection-background-color: #ffecef;
+                        selection-color: black;
+                    }
+                """)
+                
+                # 设置日历位置
+                pos = date_btn.mapToGlobal(date_btn.rect().bottomLeft())
+                calendar.move(pos)
+                
+                # 设置当前选中日期
+                calendar.setSelectedDate(deadline.date())
+                
+                # 日期选择处理
+                def date_selected(qdate):
+                    new_deadline = qdate.toString('yyyy-MM-dd')
+                    if task['deadline'] != new_deadline:
+                        task['deadline'] = new_deadline
+                        date_btn.setText(qdate.toString('MM-dd'))
+                        self.save_tasks()
+                        self.refresh_table()
+                    calendar.close()
+                
+                calendar.clicked.connect(date_selected)
+                calendar.show()
+            
+            date_btn.clicked.connect(show_calendar)
+        
+        # 添加到表格
+        self.task_table.setCellWidget(current_row, 2, date_btn)
         
         # 操作列：包含复选框和删除按钮
         operation_widget = QWidget()
@@ -1063,15 +1140,15 @@ class TodoWidget(QMainWindow):
             print("开始编辑待办事项")
             self.task_table.editItem(item)
             
-        elif column == 2:  # 日期列
-            print("开始编辑日期")
-            self.task_table.editItem(item)
-            # 设置项为可编辑状态
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
-            # 设置编辑模式下的文本数据
-            item.setData(Qt.ItemDataRole.EditRole, item.text())
-            # 设置显示模式下的文本数据
-            item.setData(Qt.ItemDataRole.DisplayRole, item.text())
+        # elif column == 2:  # 日期列
+        #     print("开始编辑日期")
+        #     self.task_table.editItem(item)
+        #     # 设置项为可编辑状态
+        #     item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
+        #     # 设置编辑模式下的文本数据
+        #     item.setData(Qt.ItemDataRole.EditRole, item.text())
+        #     # 设置显示模式下的文本数据
+        #     item.setData(Qt.ItemDataRole.DisplayRole, item.text())
 
     def handle_item_changed(self, item):
         """处理单元格内容改变"""
@@ -1089,44 +1166,44 @@ class TodoWidget(QMainWindow):
                     self.refresh_table()
                     print("任务已保存  表格已刷新")
         
-        elif column == 2:  # 日期列
-            new_text = item.text().strip()
-            # Attempt to parse the input date in "M-D" format and auto-complete to "MM-DD"
-            try:
-                month, day = map(int, new_text.split('-'))
-                if month < 10:
-                    month_str = f"0{month}"
-                else:
-                    month_str = str(month)
-                if day < 10:
-                    day_str = f"0{day}"
-                else:
-                    day_str = str(day)
-                new_text = f"{month_str}-{day_str}"
-            except ValueError:
-                print("日期格式异常，未保存")
-                self.refresh_table()
-                return
+        # elif column == 2:  # 日期列
+        #     new_text = item.text().strip()
+        #     # Attempt to parse the input date in "M-D" format and auto-complete to "MM-DD"
+        #     try:
+        #         month, day = map(int, new_text.split('-'))
+        #         if month < 10:
+        #             month_str = f"0{month}"
+        #         else:
+        #             month_str = str(month)
+        #         if day < 10:
+        #             day_str = f"0{day}"
+        #         else:
+        #             day_str = str(day)
+        #         new_text = f"{month_str}-{day_str}"
+        #     except ValueError:
+        #         print("日期格式异常，未保存")
+        #         self.refresh_table()
+        #         return
 
-            if re.match(r'^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$', new_text):
-                current_year = QDateTime.fromString(task['deadline'], 'yyyy-MM-dd').date().year()
-                month, day = map(int, new_text.split('-'))
-                new_date = QDate(current_year, month, day)
-                if new_date.isValid():
-                    new_deadline = new_date.toString('yyyy-MM-dd')
-                    if task['deadline'] != new_deadline:    
-                        print(f"新的日期文本: {new_text}")
-                        task['deadline'] = new_deadline
-                        self.save_tasks()
-                        print("任务已保存")
-                        self.refresh_table()
-                        print("表格已刷新")
-                else:
-                    print("无效的日期")
-                    self.refresh_table()
-            else:
-                print("日期格式不正确，未保存")
-                self.refresh_table()
+        #     if re.match(r'^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$', new_text):
+        #         current_year = QDateTime.fromString(task['deadline'], 'yyyy-MM-dd').date().year()
+        #         month, day = map(int, new_text.split('-'))
+        #         new_date = QDate(current_year, month, day)
+        #         if new_date.isValid():
+        #             new_deadline = new_date.toString('yyyy-MM-dd')
+        #             if task['deadline'] != new_deadline:    
+        #                 print(f"新的日期文本: {new_text}")
+        #                 task['deadline'] = new_deadline
+        #                 self.save_tasks()
+        #                 print("任务已保存")
+        #                 self.refresh_table()
+        #                 print("表格已刷新")
+        #         else:
+        #             print("无效的日期")
+        #             self.refresh_table()
+        #     else:
+        #         print("日期格式不正确，未保存")
+        #         self.refresh_table()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

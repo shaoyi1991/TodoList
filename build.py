@@ -5,11 +5,11 @@ import sys
 
 CONFIG_DATA = '''
 {
-    "current_version": "1.1.141119",
+    "current_version": "1.2.141119",
     "versions": [
     {
-        "version": "1.1.141119",
-        "description": "1、优先级编辑支持下来选择"
+        "version": "1.2.141119",
+        "description": "1、优先级编辑支持下来选择；2、日期编辑支持日历选择。"
       },
       {
         "version": "1.0.141119",
