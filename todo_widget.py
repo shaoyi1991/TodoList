@@ -1,5 +1,6 @@
 import sys
 from datetime import datetime
+from build import CONFIG_DATA  # Import CONFIG_DATA from build.py
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QPushButton, QLineEdit, QComboBox, 
                             QDateTimeEdit, QLabel, QTableWidget, QTableWidgetItem,
@@ -9,10 +10,9 @@ from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtCore import QDate
 import json
 import os
-import winreg
-import win32com.client
 from pathlib import Path
 import uuid
+import re
 
 class TaskItem:
     def __init__(self, seq, text, priority, deadline):
@@ -139,49 +139,7 @@ class TodoWidget(QMainWindow):
         # 加载任务数据
         self.load_tasks()
         
-        # 添加自启动设方法
-        self.setup_autostart()
-    
-    def setup_autostart(self):
-        """设置开机自启动"""
-        # 获取启动文件夹路径
-        startup_path = os.path.join(
-            os.getenv('APPDATA'),
-            r'Microsoft\Windows\Start Menu\Programs\Startup'
-        )
         
-        # 获取当前执行文件路径
-        app_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
-        
-        # 快捷方式路径
-        shortcut_path = os.path.join(startup_path, 'TodoList.lnk')
-        
-        try:
-            # 创建快捷方式
-            shell = win32com.client.Dispatch("WScript.Shell")
-            shortcut = shell.CreateShortCut(shortcut_path)
-            shortcut.Targetpath = app_path
-            shortcut.WorkingDirectory = os.path.dirname(app_path)
-            shortcut.save()
-            print(f"Autostart shortcut created: {shortcut_path}")
-        except Exception as e:
-            print(f"Failed to create autostart shortcut: {e}")
-
-    def remove_autostart(self):
-        """移除开机自启动"""
-        startup_path = os.path.join(
-            os.getenv('APPDATA'),
-            r'Microsoft\Windows\Start Menu\Programs\Startup'
-        )
-        shortcut_path = os.path.join(startup_path, 'TodoList.lnk')
-        
-        try:
-            if os.path.exists(shortcut_path):
-                os.remove(shortcut_path)
-                print("Autostart shortcut removed")
-        except Exception as e:
-            print(f"Failed to remove autostart shortcut: {e}")
-
     def initUI(self):
         # 设置窗口位置和初始大小
         self.setGeometry(50, 50, 320, 350)
@@ -210,7 +168,7 @@ class TodoWidget(QMainWindow):
         title_bar_layout.addWidget(icon_label)
         
         # 修改标题文本
-        title_label = QLabel('待办清单-日事日毕，日清日高')
+        title_label = QLabel('待办清单-日事日毕，日清日高-{}'.format(json.loads(CONFIG_DATA)['current_version']))
         title_label.setObjectName("titleLabel")
         title_bar_layout.addWidget(title_label)
         title_bar_layout.addStretch()
@@ -279,6 +237,21 @@ class TodoWidget(QMainWindow):
         self.task_table.setColumnCount(4)
         self.task_table.setHorizontalHeaderLabels(['待办事项', '优先级 ↕', '日期 ↕', '完成'])
         
+        # 设置第一列的宽度为自动调整以适应内容
+        self.task_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.task_table.setEditTriggers(QTableWidget.EditTrigger.DoubleClicked)
+        # 禁止用户选择表格中的行
+        self.task_table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        # # 隐藏表格的网格线
+        # self.task_table.setShowGrid(False)
+        # # 隐藏垂直头部（行号）
+        # self.task_table.verticalHeader().setVisible(False)
+    
+        # 确保连接双击事件
+        self.task_table.itemDoubleClicked.connect(self.handle_item_double_click)
+        # 连接 itemChanged 信号
+        self.task_table.itemChanged.connect(self.handle_item_changed)
+
         # 设置表格行高
         self.task_table.verticalHeader().setDefaultSectionSize(24)
         self.task_table.verticalHeader().setMinimumSectionSize(24)
@@ -374,6 +347,8 @@ class TodoWidget(QMainWindow):
             self.task_table.horizontalHeader().updateGeometry()
             self.task_table.updateGeometry()
 
+ 
+    
     def add_task(self):
         """添加任务"""
         task_text = self.task_input.text().strip()
@@ -381,7 +356,7 @@ class TodoWidget(QMainWindow):
             return
         
         priority = self.priority_combo.currentText()
-        deadline = self.deadline_edit.dateTime().toString('yyyy-MM-dd HH:mm:ss')
+        deadline = self.deadline_edit.dateTime().toString('yyyy-MM-dd')
         
         task = {
             'id': str(uuid.uuid4()),
@@ -444,142 +419,30 @@ class TodoWidget(QMainWindow):
 
     def refresh_table(self):
         """刷新表格显示"""
-        # 清表格
-        self.task_table.setRowCount(0)
+        # 暂时断开 itemChanged 信号
+        self.task_table.blockSignals(True)
+        print("刷新表格显示-----信号已断开")
         
         # 分离已完成和未完成的任务
         incomplete_tasks = [t for t in self.tasks if not t.get('completed', False)]
         completed_tasks = [t for t in self.tasks if t.get('completed', False)]
         
-        # 添加未完成的任务
-        for task in incomplete_tasks:
-            self._add_task_to_table(task)
-            
-        # 添加已完成的任务
-        for task in completed_tasks:
+        # 更新排序后的任务到tasks集合
+        self.tasks = incomplete_tasks + completed_tasks
+        
+        # 清空表格
+        self.task_table.setRowCount(0)
+        
+        # 添加所有任务到表格
+        for task in self.tasks:
             self._add_task_to_table(task)
         
         # 调整窗口高度
         self.adjust_window_height()
 
-    def _add_task_to_table(self, task):
-        """添加任务到表格"""
-        current_row = self.task_table.rowCount()
-        self.task_table.insertRow(current_row)
-        
-        # 待办事项
-        task_text = task['text']
-        if len(task_text) > 20:
-            task_text = task_text[:20] + '...'
-        task_item = QTableWidgetItem(task_text)
-        task_item.setToolTip(task['text'])
-        
-        # 如果任务已完成，添加删除线
-        if task.get('completed', False):
-            font = task_item.font()
-            font.setStrikeOut(True)
-            task_item.setFont(font)
-            task_item.setForeground(QColor('#999999'))
-        
-        self.task_table.setItem(current_row, 0, task_item)
-        
-        # 优先级
-        priority_item = QTableWidgetItem(task['priority'])
-        priority_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        if task.get('completed', False):
-            priority_item.setForeground(QColor('#999999'))
-            font = priority_item.font()
-            font.setStrikeOut(True)
-            priority_item.setFont(font)
-        elif task['priority'] == '紧急':
-            priority_item.setForeground(QColor('red'))
-        elif task['priority'] == '高':
-            priority_item.setForeground(QColor('#fd7e14'))
-        self.task_table.setItem(current_row, 1, priority_item)
-        
-        # 截止时间
-        deadline = QDateTime.fromString(task['deadline'], 'yyyy-MM-dd HH:mm:ss')
-        deadline_str = deadline.toString('MM-dd')
-        deadline_item = QTableWidgetItem(deadline_str)
-        deadline_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        if task.get('completed', False):
-            deadline_item.setForeground(QColor('#999999'))
-            font = deadline_item.font()
-            font.setStrikeOut(True)
-            deadline_item.setFont(font)
-        else:
-            # 只比较日期部分
-            deadline_date = deadline.date()
-            current_date = QDate.currentDate()
-            if deadline_date < current_date:
-                deadline_item.setForeground(QColor('red'))
-        self.task_table.setItem(current_row, 2, deadline_item)
-        
-        # 操作列：包含复选框和删除按钮
-        operation_widget = QWidget()
-        operation_layout = QHBoxLayout(operation_widget)
-        operation_layout.setContentsMargins(0, 0, 0, 0)
-        operation_layout.setSpacing(5)  # 设置按钮之间的间距
-        operation_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # 复选框
-        checkbox = QCheckBox()
-        checkbox.setChecked(task.get('completed', False))
-        checkbox.setStyleSheet("""
-            QCheckBox {
-                spacing: 0px;
-            }
-            QCheckBox::indicator {
-                width: 10px;
-                height: 10px;
-            }
-            QCheckBox::indicator:unchecked {
-                border: 2px solid #4CAF50;
-                border-radius: 2px;
-                background-color: white;
-            }
-            QCheckBox::indicator:checked {
-                border: 2px solid #ff8ba7;
-                border-radius: 2px;
-                background-color: #ff8ba7;
-                image: url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E);
-            }
-            QCheckBox::indicator:unchecked:hover {
-                border-color: #45a049;
-                background-color: rgba(76, 175, 80, 0.1);
-            }
-            QCheckBox::indicator:checked:hover {
-                border-color: #ff7096;
-                background-color: #ff7096;
-            }
-        """)
-        checkbox.stateChanged.connect(lambda state, t=task: self.toggle_task_completion(t, state))
-        
-        # 删除按钮
-        delete_btn = QPushButton("×")
-        delete_btn.setFixedSize(16, 16)
-        delete_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                color: #666666;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                color: #ff4d4d;
-            }
-        """)
-        delete_btn.clicked.connect(lambda _, t=task: self.confirm_delete_task(t))
-        
-        # 添加到布局
-        operation_layout.addWidget(checkbox)
-        operation_layout.addWidget(delete_btn)
-        
-        self.task_table.setCellWidget(current_row, 3, operation_widget)
-        
-        # 设置行高
-        self.task_table.setRowHeight(current_row, 24)
+        # 重新连接 itemChanged 信号
+        self.task_table.blockSignals(False)
+        print("刷新表格显示-----信号已连接")
 
     def on_header_clicked(self, logical_index):
         """处理表头点击事件"""
@@ -635,13 +498,13 @@ class TodoWidget(QMainWindow):
         
         # 排序未完成的任务
         incomplete_tasks.sort(
-            key=lambda x: QDateTime.fromString(x['deadline'], 'yyyy-MM-dd HH:mm:ss'),
+            key=lambda x: QDateTime.fromString(x['deadline'], 'yyyy-MM-dd'),
             reverse=(self.sort_order['deadline'] == Qt.SortOrder.DescendingOrder)
         )
         
         # 排序已完成的任务
         completed_tasks.sort(
-            key=lambda x: QDateTime.fromString(x['deadline'], 'yyyy-MM-dd HH:mm:ss'),
+            key=lambda x: QDateTime.fromString(x['deadline'], 'yyyy-MM-dd'),
             reverse=(self.sort_order['deadline'] == Qt.SortOrder.DescendingOrder)
         )
         
@@ -806,34 +669,6 @@ class TodoWidget(QMainWindow):
         
         print("Final column widths:", [self.task_table.columnWidth(i) for i in range(4)])
 
-    def create_settings_menu(self):
-        """创建设置菜单"""
-        settings_menu = QMenu(self)
-        
-        # 添加自启动选项
-        autostart_action = QAction("开机自启动", self)
-        autostart_action.setCheckable(True)
-        
-        # 检查是否已设置自启动
-        startup_path = os.path.join(
-            os.getenv('APPDATA'),
-            r'Microsoft\Windows\Start Menu\Programs\Startup',
-            'TodoList.lnk'
-        )
-        autostart_action.setChecked(os.path.exists(startup_path))
-        
-        # 连接信号
-        autostart_action.triggered.connect(self.toggle_autostart)
-        
-        settings_menu.addAction(autostart_action)
-        return settings_menu
-
-    def toggle_autostart(self, checked):
-        """切换自启动状态"""
-        if checked:
-            self.setup_autostart()
-        else:
-            self.remove_autostart()
 
     def toggle_task_completion(self, task, state):
         """切换任务完成状态"""
@@ -902,6 +737,11 @@ class TodoWidget(QMainWindow):
 
     def animate_table_refresh(self):
         """表格刷新动画"""
+
+        # 暂时断开 itemChanged 信号
+        self.task_table.blockSignals(True)
+        print("表格刷新动画-----信号已断开，开始刷新表格。")
+        
         # 保存当前任务顺序，避免重复添加
         current_tasks = self.tasks.copy()
         
@@ -923,7 +763,7 @@ class TodoWidget(QMainWindow):
                         color.setAlpha(int(255 * value))
                         item.setForeground(color)
                 
-                # 更新操作列的widget透明度
+                # 更��操作列的widget透明��
                 operation_widget = self.task_table.cellWidget(row, 3)
                 if operation_widget:
                     opacity_effect = QGraphicsOpacityEffect(operation_widget)
@@ -965,6 +805,10 @@ class TodoWidget(QMainWindow):
         # 调整窗口高度
         self.adjust_window_height()
 
+        # 重新连接 itemChanged 信号
+        self.task_table.blockSignals(False)
+        print("Item changed 信号已连接")
+
     def _add_task_to_table(self, task):
         """添加任务到表格"""
         current_row = self.task_table.rowCount()
@@ -1001,7 +845,7 @@ class TodoWidget(QMainWindow):
         self.task_table.setItem(current_row, 1, priority_item)
         
         # 截止时间
-        deadline = QDateTime.fromString(task['deadline'], 'yyyy-MM-dd HH:mm:ss')
+        deadline = QDateTime.fromString(task['deadline'], 'yyyy-MM-dd')
         deadline_str = deadline.toString('MM-dd')
         deadline_item = QTableWidgetItem(deadline_str)
         deadline_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1047,7 +891,7 @@ class TodoWidget(QMainWindow):
                 border: 2px solid #ff8ba7;
                 border-radius: 2px;
                 background-color: #ff8ba7;
-                image: url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E);
+                image: url(:/resources/checked.png);  // 使用资源路径
             }
             QCheckBox::indicator:unchecked:hover {
                 border-color: #45a049;
@@ -1108,14 +952,7 @@ class TodoWidget(QMainWindow):
                        content_height + 
                        padding * 2)
         
-        print(f"Height calculation:")
-        print(f"- Row count: {row_count}")
-        print(f"- Title: {title_height}")
-        print(f"- Input: {input_height}")
-        print(f"- Header: {header_height}")
-        print(f"- Content: {content_height}")
-        print(f"- Padding: {padding * 2}")
-        print(f"- Total: {total_height}")
+        print(f"Height calculation: Row count: {row_count}, Title: {title_height}, Input: {input_height}, Header: {header_height}, Content: {content_height}, Padding: {padding * 2}, Total: {total_height}")
         
         # 强制调整窗口大小
         self.setFixedHeight(total_height)
@@ -1149,6 +986,100 @@ class TodoWidget(QMainWindow):
         
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.delete_task(task)
+
+    def handle_item_double_click(self, item):
+        """处理双击事件"""
+        print("=== 双击事件触发 ===")
+        row = item.row()
+        column = item.column()
+        task = self.tasks[row]
+        print(f"行: {row}, 列: {column}")
+        print(f"当前任务: {task}")
+        
+        if column == 0:  # 待办事项列
+            print("开始编辑待办事项")
+            self.task_table.editItem(item)
+        elif column == 1:  # 优先级列
+            print("开始编辑优先级")
+            self.task_table.editItem(item)
+            
+        elif column == 2:  # 日期列
+            print("开始编辑日期")
+            self.task_table.editItem(item)
+            # 设置项为可编辑状态
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
+            # 设置编辑模式下的文本数据
+            item.setData(Qt.ItemDataRole.EditRole, item.text())
+            # 设置显示模式下的文本数据
+            item.setData(Qt.ItemDataRole.DisplayRole, item.text())
+
+    def handle_item_changed(self, item):
+        """处理单元格内容改变"""
+        row = item.row()
+        column = item.column()
+        task = self.tasks[row]
+        
+        if column == 0:  # 待办事项列
+            new_text = item.text().strip()
+            if new_text:
+                if task['text'] != new_text:
+                    print(f"新的待办事项文本: {new_text}")
+                    task['text'] = new_text
+                    self.save_tasks()
+                    self.refresh_table()
+                    print("任务已保存  表格已刷新")
+        
+        elif column == 1:  # 优先级列
+            new_priority = item.text().strip()
+            valid_priorities = ['紧急','高', '中', '低']
+            if new_priority in valid_priorities:
+                if task['priority'] != new_priority:
+                    print(f"新的优先级文本: {new_priority}")
+                    task['priority'] = new_priority
+                    self.save_tasks()
+                    self.refresh_table()
+                    print("任务已保存  表格已刷新")
+            else:
+                print("无效的优先级，未保存")
+                self.refresh_table()
+        elif column == 2:  # 日期列
+            new_text = item.text().strip()
+            # Attempt to parse the input date in "M-D" format and auto-complete to "MM-DD"
+            try:
+                month, day = map(int, new_text.split('-'))
+                if month < 10:
+                    month_str = f"0{month}"
+                else:
+                    month_str = str(month)
+                if day < 10:
+                    day_str = f"0{day}"
+                else:
+                    day_str = str(day)
+                new_text = f"{month_str}-{day_str}"
+            except ValueError:
+                print("日期格式异常，未保存")
+                self.refresh_table()
+                return
+
+            if re.match(r'^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$', new_text):
+                current_year = QDateTime.fromString(task['deadline'], 'yyyy-MM-dd').date().year()
+                month, day = map(int, new_text.split('-'))
+                new_date = QDate(current_year, month, day)
+                if new_date.isValid():
+                    new_deadline = new_date.toString('yyyy-MM-dd')
+                    if task['deadline'] != new_deadline:    
+                        print(f"新的日期文本: {new_text}")
+                        task['deadline'] = new_deadline
+                        self.save_tasks()
+                        print("任务已保存")
+                        self.refresh_table()
+                        print("表格已刷新")
+                else:
+                    print("无效的日期")
+                    self.refresh_table()
+            else:
+                print("日期格式不正确，未保存")
+                self.refresh_table()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
