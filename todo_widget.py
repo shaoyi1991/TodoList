@@ -763,7 +763,7 @@ class TodoWidget(QMainWindow):
                         color.setAlpha(int(255 * value))
                         item.setForeground(color)
                 
-                # 更��操作列的widget透明��
+                # 更操作列的widget透明
                 operation_widget = self.task_table.cellWidget(row, 3)
                 if operation_widget:
                     opacity_effect = QGraphicsOpacityEffect(operation_widget)
@@ -830,19 +830,75 @@ class TodoWidget(QMainWindow):
         
         self.task_table.setItem(current_row, 0, task_item)
         
-        # 优先级
-        priority_item = QTableWidgetItem(task['priority'])
-        priority_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        if task.get('completed', False):
-            priority_item.setForeground(QColor('#999999'))
-            font = priority_item.font()
-            font.setStrikeOut(True)
-            priority_item.setFont(font)
-        elif task['priority'] == '紧急':
-            priority_item.setForeground(QColor('red'))
-        elif task['priority'] == '高':
-            priority_item.setForeground(QColor('#fd7e14'))
-        self.task_table.setItem(current_row, 1, priority_item)
+        # 优先级下拉框
+        priority_combo = QComboBox()
+        priority_combo.addItems(['紧急', '高', '中', '低'])
+        priority_combo.setCurrentText(task['priority'])
+        priority_combo.setFixedSize(50, 24)  # 固定大小
+        
+        # 获取当前优先级和完成状态
+        current_priority = task['priority']
+        is_completed = task.get('completed', False)
+        
+        # 基础样式
+        base_style = """
+            /* 主框架样式 */
+            QComboBox {
+                border: none;             /* 移除边框 */
+                background: transparent;   /* 背景透明 */
+                padding-left: 4px;        /* 左侧填充，文字不贴边 */
+                %s                        /* 预留位置用于添加删除线样式 */
+            }
+            
+            /* 下拉按钮样式 */
+            QComboBox::drop-down {
+                border: none;             /* 移除下拉按钮边框 */
+                width: 20px;              /* 设置下拉按钮宽度 */
+            }
+            
+            /* 下拉列表样式 */
+            QComboBox QAbstractItemView {
+                border: 1px solid #ffccd5;  /* 下拉框边框 */
+                background: white;          /* 下拉框背景 */
+                selection-background-color: #ffecef;  /* 选中项背景色 */
+            }
+            
+            /* 下拉列表中不同优先级的颜色 */
+            QComboBox QAbstractItemView::item[text="紧急"] {
+                color: red;               /* 紧急级别显示红色 */
+            }
+            QComboBox QAbstractItemView::item[text="高"] {
+                color: orange;            /* 高级别显示橙色 */
+            }
+        """
+        
+        # 根据完成状态和优先级设置样式
+        if is_completed:
+            # 已完成任务：添加删除线，使用灰色
+            style_extra = "color: #999999; text-decoration: line-through;"
+        else:
+            # 未完成任务：根据优先级设置颜色
+            if current_priority == '紧急':
+                style_extra = "color: red;"
+            elif current_priority == '高':
+                style_extra = "color: orange;"
+            else:
+                style_extra = "color: black;"
+        
+        # 应用样式
+        priority_combo.setStyleSheet(base_style % style_extra)
+        
+        # 如果任务已完成，禁用下拉框
+        if is_completed:
+            priority_combo.setEnabled(False)
+        
+        # 连接信号
+        priority_combo.currentTextChanged.connect(
+            lambda new_priority, t=task: self.update_task_priority(t, new_priority)
+        )
+        
+        # 添加到表格
+        self.task_table.setCellWidget(current_row, 1, priority_combo)
         
         # 截止时间
         deadline = QDateTime.fromString(task['deadline'], 'yyyy-MM-dd')
@@ -857,7 +913,6 @@ class TodoWidget(QMainWindow):
         else:
          # 只比较日期部分
             deadline_date = deadline.date()
-
             current_date = QDate.currentDate()
             if deadline_date < current_date:
                 deadline_item.setForeground(QColor('red'))
@@ -930,6 +985,14 @@ class TodoWidget(QMainWindow):
         # 设置行高
         self.task_table.setRowHeight(current_row, 24)
 
+    def update_task_priority(self, task, new_priority):
+        """更新任务优先级"""
+        if task['priority'] != new_priority:
+            task['priority'] = new_priority
+            self.save_tasks()
+            self.refresh_table()
+            print("任务优先级已更新并保存")
+
     def adjust_window_height(self):
         """调整窗口高度"""
         # 基础UI元素高度
@@ -999,9 +1062,6 @@ class TodoWidget(QMainWindow):
         if column == 0:  # 待办事项列
             print("开始编辑待办事项")
             self.task_table.editItem(item)
-        elif column == 1:  # 优先级列
-            print("开始编辑优先级")
-            self.task_table.editItem(item)
             
         elif column == 2:  # 日期列
             print("开始编辑日期")
@@ -1029,19 +1089,6 @@ class TodoWidget(QMainWindow):
                     self.refresh_table()
                     print("任务已保存  表格已刷新")
         
-        elif column == 1:  # 优先级列
-            new_priority = item.text().strip()
-            valid_priorities = ['紧急','高', '中', '低']
-            if new_priority in valid_priorities:
-                if task['priority'] != new_priority:
-                    print(f"新的优先级文本: {new_priority}")
-                    task['priority'] = new_priority
-                    self.save_tasks()
-                    self.refresh_table()
-                    print("任务已保存  表格已刷新")
-            else:
-                print("无效的优先级，未保存")
-                self.refresh_table()
         elif column == 2:  # 日期列
             new_text = item.text().strip()
             # Attempt to parse the input date in "M-D" format and auto-complete to "MM-DD"
