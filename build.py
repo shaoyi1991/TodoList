@@ -5,9 +5,13 @@ import sys
 
 CONFIG_DATA = '''
 {
-    "current_version": "1.2.141119",
+    "current_version": "1.3.250718",
     "versions": [
-    {
+      {
+        "version": "1.3.250718",
+        "description": "修改优先级为四象限原则"
+      },
+      {
         "version": "1.2.141119",
         "description": "1、优先级编辑支持下来选择；2、日期编辑支持日历选择。"
       },

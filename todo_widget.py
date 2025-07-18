@@ -108,7 +108,7 @@ class TodoWidget(QMainWindow):
         self.task_count = 0  # 用于跟踪序号
         self.tasks = []  # 存储任务数据
         # 修改优先级定义和映射
-        self.priority_values = {'低': 0, '中': 1, '高': 2, '紧急': 3}
+        self.priority_values = {'不紧急不重要': 0, '紧急不重要': 1, '重要不紧急': 2, '紧急重要': 3}
         self.sort_order = {'priority': Qt.SortOrder.AscendingOrder, 'deadline': Qt.SortOrder.AscendingOrder}
         self.data_file = 'todo_data.json'  # 数据文件路径
         # 移除系统默认的标题栏
@@ -126,7 +126,7 @@ class TodoWidget(QMainWindow):
         self.setMinimumHeight(0)
         
         # 设置最小宽度
-        self.setMinimumWidth(300)
+        self.setMinimumWidth(400)  # 增加最小宽度从300到400
 
         # 确保数据文件存在
         if not os.path.exists(self.data_file):
@@ -142,10 +142,10 @@ class TodoWidget(QMainWindow):
         
     def initUI(self):
         # 设置窗口位置和初始大小
-        self.setGeometry(50, 50, 320, 350)
+        self.setGeometry(50, 50, 420, 350)  # 增加初始宽度从320到420
         
         # 设置窗口最小尺寸
-        self.setMinimumSize(250, 300)  # 设置最小宽度和高度
+        self.setMinimumSize(400, 300)  # 增加最小宽度从250到400
         
         # 创建主窗口部件
         central_widget = QWidget()
@@ -163,8 +163,8 @@ class TodoWidget(QMainWindow):
         title_bar.setObjectName("titleBar")
         
         # 添加小标
-        icon_label = QLabel('🐱')  # 使用猫咪表情
-        icon_label.setObjectName("iconLabel")
+        icon_label = QLabel('🦄')  # 使用独角兽表情，更加显眼
+        icon_label.setStyleSheet("font-size: 16px; font-weight: bold;color: #9370DB;")  # 紫色独角兽icon_label.setObjectName("iconLabel")
         title_bar_layout.addWidget(icon_label)
         
         # 修改标题文本
@@ -212,9 +212,9 @@ class TodoWidget(QMainWindow):
         self.task_input.setFixedHeight(24)  # 固定高度
         
         self.priority_combo = QComboBox()
-        self.priority_combo.addItems(['紧急', '高', '中', '低'])
-        self.priority_combo.setCurrentText('中')
-        self.priority_combo.setFixedSize(50, 24)  # 固定大小
+        self.priority_combo.addItems(['紧急重要', '重要不紧急', '紧急不重要', '不紧急不重要'])
+        self.priority_combo.setCurrentText('重要不紧急')
+        self.priority_combo.setFixedSize(100, 24)  # 增加宽度从50到100
         
         self.deadline_edit = QDateTimeEdit(QDateTime.currentDateTime())
         self.deadline_edit.setDisplayFormat("MM-dd")
@@ -309,12 +309,12 @@ class TodoWidget(QMainWindow):
         self.task_table.setFixedWidth(content_width)
         
         # 计算列宽
-        fixed_width = 55 * 3
-        first_column_width = content_width - fixed_width-10 # 减去10像素，防止表格内容溢      
+        fixed_width = 100 + 55 + 55  # 优先级列宽增加到100
+        first_column_width = content_width - fixed_width - 10 # 减去10像素，防止表格内容溢出  
         
         # 设置列宽
         self.task_table.setColumnWidth(0, first_column_width)
-        self.task_table.setColumnWidth(1, 55)
+        self.task_table.setColumnWidth(1, 100)  # 优先级列宽增加到100
         self.task_table.setColumnWidth(2, 55)
         self.task_table.setColumnWidth(3, 55)
         
@@ -334,12 +334,12 @@ class TodoWidget(QMainWindow):
             self.task_table.setFixedWidth(content_width)
             
             # 重新计算列宽
-            fixed_width = 55 * 3
-            first_column_width = content_width - fixed_width-10 # 减去10像素，防止表格内容溢出  
+            fixed_width = 100 + 55 + 55  # 优先级列宽增加到100
+            first_column_width = content_width - fixed_width - 10 # 减去10像素，防止表格内容溢出  
             
             # 设置列宽
             self.task_table.setColumnWidth(0, first_column_width)
-            self.task_table.setColumnWidth(1, 55)
+            self.task_table.setColumnWidth(1, 100)  # 优先级列宽增加到100
             self.task_table.setColumnWidth(2, 55)
             self.task_table.setColumnWidth(3, 55)
             
@@ -832,9 +832,9 @@ class TodoWidget(QMainWindow):
         
         # 优先级下拉框
         priority_combo = QComboBox()
-        priority_combo.addItems(['紧急', '高', '中', '低'])
+        priority_combo.addItems(['紧急重要', '重要不紧急', '紧急不重要', '不紧急不重要'])
         priority_combo.setCurrentText(task['priority'])
-        priority_combo.setFixedSize(50, 24)  # 固定大小
+        priority_combo.setFixedSize(100, 24)  # 增加宽度从50到100
         
         # 获取当前优先级和完成状态
         current_priority = task['priority']
@@ -864,10 +864,10 @@ class TodoWidget(QMainWindow):
             }
             
             /* 下拉列表中不同优先级的颜色 */
-            QComboBox QAbstractItemView::item[text="紧急"] {
+            QComboBox QAbstractItemView::item[text="紧急重要"] {
                 color: red;               /* 紧急级别显示红色 */
             }
-            QComboBox QAbstractItemView::item[text="高"] {
+            QComboBox QAbstractItemView::item[text="重要不紧急"] {
                 color: orange;            /* 高级别显示橙色 */
             }
         """
@@ -878,9 +878,9 @@ class TodoWidget(QMainWindow):
             style_extra = "color: #999999; text-decoration: line-through;"
         else:
             # 未完成任务：根据优先级设置颜色
-            if current_priority == '紧急':
-                style_extra = "color: red;"
-            elif current_priority == '高':
+            if current_priority == '紧急重要':
+                style_extra = "color: #FF0000;"  # 更鲜艳的红色
+            elif current_priority == '重要不紧急':
                 style_extra = "color: orange;"
             else:
                 style_extra = "color: black;"
