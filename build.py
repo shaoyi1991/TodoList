@@ -1,12 +1,19 @@
 import PyInstaller.__main__
 import os
 import json
-import sys
 
 CONFIG_DATA = '''
 {
-    "current_version": "1.3.250718",
+    "current_version": "1.3.251110",
     "versions": [
+    {
+        "version": "1.3.251110",
+        "description": "1、数据列表支持滚动；2、已完成事项按日期降序排序；3、增加分页功能；4、支持缩小到屏幕顶部。"
+      },
+     {
+        "version": "1.3.250721",
+        "description": "兼容历史优先级数据，避免点击优先级闪退；取消鼠标滑动时会修改优先级"
+      },
       {
         "version": "1.3.250718",
         "description": "修改优先级为四象限原则"
