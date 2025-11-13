@@ -2,11 +2,12 @@ import sys
 from datetime import datetime
 from build import CONFIG_DATA  # Import CONFIG_DATA from build.py
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                            QHBoxLayout, QPushButton, QLineEdit, QComboBox, 
+                            QHBoxLayout, QGridLayout, QPushButton, QLineEdit, QComboBox, 
                             QDateTimeEdit, QLabel, QTableWidget, QTableWidgetItem,
                             QHeaderView, QSizePolicy, QDialog, QMenu, QCheckBox, QGraphicsOpacityEffect, QCalendarWidget)
-from PyQt6.QtCore import Qt, QDateTime, QPoint, QRect, QTimer, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QColor, QPainter
+from PyQt6.QtCore import Qt, QDateTime, QPoint, QRect, QTimer, QPropertyAnimation, QEasingCurve, QEvent
+from PyQt6.QtGui import QColor, QPainter  # 导入颜色与绘图相关类（保持原功能）
+from PyQt6.QtGui import QFont, QFontMetrics, QShortcut, QKeySequence  # 引入字体度量与快捷键相关类
 from PyQt6.QtCore import QDate
 import json
 import os
@@ -140,8 +141,8 @@ class TodoWidget(QMainWindow):
         # 移除最小高度限制
         self.setMinimumHeight(0)
         
-        # 设置最小宽度
-        self.setMinimumWidth(400)  # 增加最小宽度从300到400
+        # 设置最小宽度（降低到160，允许更窄窗口）
+        self.setMinimumWidth(160)
 
         # 确保数据文件存在
         if not os.path.exists(self.data_file):
@@ -189,11 +190,15 @@ class TodoWidget(QMainWindow):
         title_bar_layout.addWidget(title_label)
         title_bar_layout.addStretch()
         
-        # 最小化和关闭按钮
+        # 最小化、收缩和关闭按钮
         min_button = QPushButton('－')
         min_button.setFixedSize(22, 22)  # 按钮大小与标题栏等高
         min_button.setObjectName("minButton")
         min_button.clicked.connect(self.showMinimized)
+        collapse_button = QPushButton('收缩')  # 新增显式收缩按钮
+        collapse_button.setFixedSize(36, 22)  # 适度加宽以便点击
+        collapse_button.setObjectName("collapseButton")
+        collapse_button.clicked.connect(lambda: self.toggle_collapse())  # 绑定收缩/展开切换
         
         close_button = QPushButton('×')
         close_button.setFixedSize(22, 22)  # 按钮大小与标题栏等高
@@ -201,6 +206,7 @@ class TodoWidget(QMainWindow):
         close_button.clicked.connect(self.close)
         
         title_bar_layout.addWidget(min_button)
+        title_bar_layout.addWidget(collapse_button)
         title_bar_layout.addWidget(close_button)
         
         # 保存标题栏引用用于拖动
@@ -216,41 +222,53 @@ class TodoWidget(QMainWindow):
         # 添加标题栏和其他部件
         layout.addWidget(title_bar)
         
-        # 创建输入区域
+        # 创建输入区域（支持自动换行：改为网格布局）
         input_widget = QWidget()  # 创建输入区域容器控件（顶部操作/筛选栏），用于承载输入框、下拉框、日期、添加按钮
-        input_layout = QHBoxLayout(input_widget)
+        input_widget.setObjectName("input_widget")  # 设置对象名以便样式选择器生效
+        input_layout = QGridLayout(input_widget)  # 使用网格布局支持按需换行
         input_layout.setContentsMargins(8, 4, 8, 4)  # 减小上下边距
-        input_layout.setSpacing(4)
+        input_layout.setHorizontalSpacing(4)
+        input_layout.setVerticalSpacing(6)
         
         # 修复输入控件高度
         self.task_input = QLineEdit()
         self.task_input.setPlaceholderText('输入待办事项...')
         self.task_input.setFixedHeight(24)  # 固定高度
+        self.task_input.setMinimumWidth(0)  # 最小宽为0以利于窄宽适配
+        self.task_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)  # 水平扩展，垂直固定
         
         self.priority_combo = QComboBox()
         self.priority_combo.addItems(['紧急重要', '重要不紧急', '紧急不重要', '不紧急不重要'])
         self.priority_combo.setCurrentText('重要不紧急')
-        self.priority_combo.setFixedSize(100, 24)  # 增加宽度从50到100
+        self.priority_combo.setFixedSize(80, 24)  # 缩小默认宽度为80
+        self.priority_combo.setMinimumWidth(0)
+        self.priority_combo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         
         self.deadline_edit = QDateTimeEdit(QDateTime.currentDateTime())
         self.deadline_edit.setDisplayFormat("MM-dd")
         self.deadline_edit.setCalendarPopup(True)
-        self.deadline_edit.setFixedSize(70, 24)  # 固定大小
+        self.deadline_edit.setFixedSize(50, 24)  # 缩小默认宽度为50
+        self.deadline_edit.setMinimumWidth(0)
+        self.deadline_edit.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         
         add_button = QPushButton('添加')
         add_button.setFixedSize(50, 24)  # 固定大小
+        add_button.setMinimumWidth(0)
+        add_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         add_button.clicked.connect(self.add_task)
+        self.add_button = add_button  # 记录添加按钮引用，便于重排布局
         
-        input_layout.addWidget(self.task_input)
-        input_layout.addWidget(self.priority_combo)
-        input_layout.addWidget(self.deadline_edit)
-        input_layout.addWidget(add_button)
+        # 网格布局初始放置：宽屏下默认一行
+        input_layout.addWidget(self.task_input, 0, 0, 1, 3)  # 输入框占据三列
+        input_layout.addWidget(self.priority_combo, 0, 3, 1, 1)
+        input_layout.addWidget(self.deadline_edit, 0, 4, 1, 1)
+        input_layout.addWidget(add_button, 0, 5, 1, 1)
         
         # 设置输入区域容器的尺寸策略：水平为 Preferred，垂直为 Fixed，避免拖拽窗口时该区域被拉伸变高
         input_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)  # 仅允许水平自适应，垂直固定高度
-        # 计算并设置输入区域容器的固定高度（控件高度24 + 上下边距4+4 = 32），确保拖动窗口时该区域高度不变化
-        fixed_input_height = 24 + input_layout.contentsMargins().top() + input_layout.contentsMargins().bottom()  # 计算固定高度
-        input_widget.setFixedHeight(fixed_input_height)  # 设置固定高度，防止垂直方向拉伸
+        # 计算并设置输入区域容器的固定高度（多行时自动增高）
+        fixed_input_height = 24 + input_layout.contentsMargins().top() + input_layout.contentsMargins().bottom()  # 基础高度
+        input_widget.setMinimumHeight(fixed_input_height)
 
         self.input_widget = input_widget  # 记录输入区域容器控件，便于收缩/展开时统一隐藏与显示
         layout.addWidget(input_widget)  # 将输入区域添加到主布局中
@@ -288,18 +306,19 @@ class TodoWidget(QMainWindow):
         
         # 禁用所有自动调整
         header.setStretchLastSection(False)
-        header.setMinimumSectionSize(45)
-        header.setDefaultSectionSize(45)
+        header.setMinimumSectionSize(0)  # 将列最小宽度降为0，取消首列的最小宽度限制
+        header.setDefaultSectionSize(45)  # 默认列宽保留为45（后续对非首列使用固定宽覆盖）
         
-        # 禁用水平滚动条
-        self.task_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # 水平滚动条改为按需显示，避免内容被遮挡且在不足时允许滚动
+        self.task_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
         # 禁用列调整和移动
         header.setSectionsMovable(False)
         
-        # 所有列都设置为固定宽度
-        for i in range(4):
-            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Fixed)
+        # 列宽策略：首列使用 Stretch 随窗口动态伸缩，其余三列可交互调整（Interactive）
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # 首列占用剩余空间，动态扩展/压缩
+        for i in range(1, 4):  # 1~3列允许用户手动调整宽度
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Interactive)
         
         # 使用 QTimer 确保在布局完成后设置列宽
         QTimer.singleShot(0, self.initial_column_setup)
@@ -360,7 +379,7 @@ class TodoWidget(QMainWindow):
         self.adjustSize()
 
         # 确保表格可以自适应窗口大小变化
-        self.task_table.horizontalHeader().setStretchLastSection(True)
+        self.task_table.horizontalHeader().setStretchLastSection(False)
         self.task_table.verticalHeader().setStretchLastSection(False)
 
         # 在设置完表格后立即验证列宽
@@ -372,7 +391,8 @@ class TodoWidget(QMainWindow):
             screen_height = screen.availableGeometry().height()  # 获取可用屏幕高度（排除任务栏）
         else:
             screen_height = 800  # 如果获取失败，设置一个合理的默认高度（800像素）
-        self.max_window_height = int(screen_height * 2 / 3)  # 计算最大窗口高度为屏幕的2/3
+        # self.max_window_height = int(screen_height * 2 / 3)  # 计算最大窗口高度为屏幕的2/3
+        self.max_window_height = int(screen_height)  # 计算最大窗口高度为屏幕的2/3
         self.setMaximumHeight(self.max_window_height)  # 设置窗口最大高度，避免窗口过高影响体验
         QTimer.singleShot(0, self.adjust_window_height)  # 在布局完成后调整窗口高度与列表滚动
 
@@ -382,41 +402,73 @@ class TodoWidget(QMainWindow):
         # 初始化分页显示（根据当前任务数量计算总页数并更新标签与按钮状态）
         self.update_pagination_ui()  # 初始更新分页标签与按钮，确保首次显示正确
 
+        # 初始化时即根据窗口尺寸设置表格内容字体大小（只影响表格内容）
+        self.update_table_font_by_window()  # 首次应用小/中/大字体
+
+        # 安装标题栏事件过滤器以支持双击收缩/展开
+        self.title_bar.installEventFilter(self)
+
+        # 新增快捷键 Alt+S：收缩/展开切换
+        try:
+            self.collapse_shortcut = QShortcut(QKeySequence('Alt+S'), self)  # 创建快捷键对象
+            self.collapse_shortcut.activated.connect(self.toggle_collapse)  # 绑定到切换方法
+        except Exception as e:
+            print(f"快捷键注册失败: {e}")
+
     def collapse_to_title(self):
-        """将窗口收缩到仅显示标题栏的高度（实现顶端自动收缩）"""
-        # 如果尚未保存正常几何信息，则在收缩前进行保存，便于恢复
-        if self.normal_geometry is None:  # 仅在第一次收缩时记录，避免覆盖用户最新尺寸
-            self.normal_geometry = self.geometry()  # 保存当前窗口的几何信息（位置与大小），用于恢复
-        # 在收缩时隐藏除标题栏外的所有内容区域控件，随后隐藏主窗口本身，仅保留悬浮图标显示
-        if hasattr(self, 'content_widgets'):  # 判断内容控件集合是否存在
-            for w in self.content_widgets:  # 遍历需要隐藏的内容控件
-                w.setVisible(False)  # 将内容控件设置为隐藏
-        self.title_bar.setVisible(False)  # 收缩状态不显示标题栏，避免占据空间与误触
-        self.hide()  # 隐藏主窗口，仅显示悬浮图标小窗口
-        self.show_dock_icon()  # 显示悬浮图标（置顶、可点击），点击后再弹出主窗口
-        # 标记当前处于顶部收缩状态，供事件逻辑判断使用
-        self.is_docked_top = True  # 设置顶部收缩状态为真
+        """将窗口收缩为隐藏到顶部，仅保留悬浮图标置顶显示"""
+        if self.normal_geometry is None:
+            self.normal_geometry = self.geometry()  # 保存当前几何以便恢复
+        # 隐藏内容区域与标题栏
+        if hasattr(self, 'content_widgets'):
+            for w in self.content_widgets:
+                w.setVisible(False)
+        self.title_bar.setVisible(False)
+        # 隐藏主窗口，仅显示悬浮图标
+        self.hide()
+        self.show_dock_icon()
+        self.is_docked_top = True
 
     def expand_from_title(self):
-        """从仅标题栏状态恢复到原始大小（悬停或拖动时展开）"""
-        # 如果没有记录正常几何信息，提供一个合理的默认尺寸以避免异常
-        if self.normal_geometry is None:  # 正常情况下会在收缩时记录，这里是兜底
-            # 构造一个默认的几何（当前位置、当前宽度、最低合理高度），避免None导致无法恢复
-            self.normal_geometry = QRect(self.x(), 0, max(self.width(), 420), max(self.height(), 350))  # 使用文件中初始尺寸作为参考
-        # 恢复到保存的正常尺寸与位置，并显示主窗口（从悬浮图标点击后弹窗）
-        self.move(self.normal_geometry.x(), 0)  # 展开时保持贴顶位置，呈现简洁的下拉展开
-        self.resize(self.normal_geometry.width(), self.normal_geometry.height())  # 恢复宽高到收缩前的值
-        self.show()  # 显示主窗口，使用户可见并操作
-        self.raise_()  # 将主窗口置于最前，避免被其他窗口遮挡
-        self.activateWindow()  # 激活主窗口，使其获得焦点
-        self.hide_dock_icon()  # 隐藏悬浮图标窗口，避免与主窗口重叠或误触
-        # 在展开时显示内容区域控件，恢复到正常布局与显示
-        if hasattr(self, 'content_widgets'):  # 判断内容控件集合是否存在
-            for w in self.content_widgets:  # 遍历需要显示的内容控件
-                w.setVisible(True)  # 将内容控件设置为可见
-        self.title_bar.setVisible(True)  # 展开后标题栏可见，保留窗口控制按钮
-        # 保持顶部状态标记不变（悬停展开仍视为处于顶部收缩场景），仅在拖出顶部后再清除该状态
-        # self.is_docked_top 不在此处修改，避免悬停展开后立即又收缩导致闪烁
+        """从隐藏到顶部的收缩状态恢复到原始大小"""
+        if self.normal_geometry is None:
+            self.normal_geometry = QRect(self.x(), 0, max(self.width(), 420), max(self.height(), 350))
+        # 恢复位置与尺寸
+        self.move(self.normal_geometry.x(), 0)
+        self.resize(self.normal_geometry.width(), self.normal_geometry.height())
+        # 显示主窗口并置前
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        # 隐藏悬浮图标
+        self.hide_dock_icon()
+        # 显示内容区域与标题栏
+        if hasattr(self, 'content_widgets'):
+            for w in self.content_widgets:
+                w.setVisible(True)
+        self.title_bar.setVisible(True)
+        self.is_docked_top = False
+
+    def toggle_collapse(self):
+        """切换收缩/展开状态：标题栏双击、按钮或快捷键触发"""
+        try:  # 使用异常捕获，保证切换过程稳定
+            if self.is_docked_top:  # 判断当前是否处于收缩状态
+                self.expand_from_title()  # 若已收缩则展开到正常大小
+            else:  # 若未收缩
+                self.collapse_to_title()  # 执行收缩到仅标题栏高度
+        except Exception as e:  # 捕获异常
+            print(f"切换收缩状态失败: {e}")  # 打印错误信息
+
+    def eventFilter(self, obj, event):
+        """事件过滤器：拦截标题栏双击事件以收缩/展开"""
+        try:  # 使用异常捕获保护事件处理
+            # 判断对象是否为标题栏且事件为鼠标左键双击
+            if obj is getattr(self, 'title_bar', None) and event.type() == QEvent.Type.MouseButtonDblClick:
+                self.toggle_collapse()  # 调用切换方法实现收缩/展开
+                return True  # 返回True表示事件已处理
+        except Exception as e:  # 捕获异常
+            print(f"事件过滤处理失败: {e}")  # 打印错误信息
+        return super().eventFilter(obj, event)  # 交由父类处理其他事件
 
     def setup_dock_icon(self):
         """创建并配置收缩状态下显示的悬浮图标窗口"""
@@ -457,37 +509,24 @@ class TodoWidget(QMainWindow):
 
     def on_dock_icon_clicked(self):
         """悬浮图标点击事件：展开主窗口并清除顶部收缩状态"""
-        self.expand_from_title()  # 执行展开逻辑，恢复主窗口显示与内容
-        self.is_docked_top = False  # 清除顶部收缩状态，避免再次自动收缩
+        self.expand_from_title()
+        self.is_docked_top = False
 
     def dock_check_and_collapse(self):
-        """在拖动或释放后进行触顶判定，满足条件则自动收缩到标题栏"""
-        # 获取当前窗口的顶部坐标（相对屏幕），用于判断是否已触达屏幕顶端
-        top_y = self.frameGeometry().top()  # 读取窗口框架顶部的全局Y坐标
-        # 当顶部坐标小于等于阈值时，认为已触顶，可执行收缩
-        if top_y <= self.dock_threshold:  # 触顶条件：近似位于屏幕最上方
-            self.collapse_to_title()  # 执行顶部收缩
-        else:
-            # 若未触顶且此前处于收缩状态，则取消收缩并恢复正常尺寸
-            if self.is_docked_top:  # 仅在已收缩状态下进行恢复
-                self.is_docked_top = False  # 清除顶部收缩状态标记
-                self.expand_from_title()  # 恢复窗口到正常大小
+        """废弃的触顶自动收缩判定（保留方法以兼容，但不再自动调用）"""
+        pass
 
     def initial_column_setup(self):
         """初始化列宽设置"""
-        # 设置表格的固定总宽度
-        content_width = self.width() - 5
-        self.task_table.setFixedWidth(content_width)
+        # 设置表格的固定总宽度（保留整体宽度约束）
+        content_width = self.width() - 5  # 根据窗口宽度计算表格总宽度，预留边距
+        self.task_table.setFixedWidth(content_width)  # 设定表格总宽度以匹配窗口
         
-        # 计算列宽
-        fixed_width = 100 + 55 + 55  # 优先级列宽增加到100
-        first_column_width = content_width - fixed_width - 10 # 减去10像素，防止表格内容溢出  
-        
-        # 设置列宽
-        self.task_table.setColumnWidth(0, first_column_width)
-        self.task_table.setColumnWidth(1, 100)  # 优先级列宽增加到100
-        self.task_table.setColumnWidth(2, 55)
-        self.task_table.setColumnWidth(3, 55)
+        # 设置非首列的固定宽度（保持稳定布局）
+        self.task_table.setColumnWidth(1, 80)   # 优先级列默认宽度缩小为80
+        self.task_table.setColumnWidth(2, 50)   # 日期列默认宽度缩小为50
+        self.task_table.setColumnWidth(3, 50)   # 完成列默认宽度缩小为50
+        # 首列由 ResizeToContents 决定，无需强制设置宽度
         
         # 强制更新布局
         self.task_table.horizontalHeader().updateGeometry()
@@ -498,25 +537,39 @@ class TodoWidget(QMainWindow):
         print(f"Initial setup - Column widths: {[self.task_table.columnWidth(i) for i in range(4)]}")
 
     def resizeEvent(self, event):
-        """窗口大小改变时重新计算列宽"""
-        super().resizeEvent(event)
+        """窗口大小改变时重新计算列宽并调整表格字体"""
+        super().resizeEvent(event)  # 调用父类事件，保持默认行为
         if hasattr(self, 'task_table'):
-            content_width = self.width() - 5
-            self.task_table.setFixedWidth(content_width)
+            content_width = self.width() - 5  # 计算表格总宽度，预留边距
+            self.task_table.setFixedWidth(content_width)  # 设置表格总宽度
             
-            # 重新计算列宽
-            fixed_width = 100 + 55 + 55  # 优先级列宽增加到100
-            first_column_width = content_width - fixed_width - 10 # 减去10像素，防止表格内容溢出  
+            # 非首列默认宽度调整为更紧凑（可交互情况下作为初始值）
+            self.task_table.setColumnWidth(1, 80)   # 优先级列默认宽度
+            self.task_table.setColumnWidth(2, 50)   # 日期列默认宽度
+            self.task_table.setColumnWidth(3, 50)   # 完成列默认宽度
             
-            # 设置列宽
-            self.task_table.setColumnWidth(0, first_column_width)
-            self.task_table.setColumnWidth(1, 100)  # 优先级列宽增加到100
-            self.task_table.setColumnWidth(2, 55)
-            self.task_table.setColumnWidth(3, 55)
-            
-            # 强制更新布局
-            self.task_table.horizontalHeader().updateGeometry()
-            self.task_table.updateGeometry()
+            # 强制更新布局以应用新的宽度策略
+            self.task_table.horizontalHeader().updateGeometry()  # 更新表头几何
+            self.task_table.updateGeometry()  # 更新表格几何
+
+            # 尺寸足够时复位滚动条位置，保证最后一列与最后一行完全可见
+            hsb = self.task_table.horizontalScrollBar()  # 获取水平滚动条
+            vsb = self.task_table.verticalScrollBar()    # 获取垂直滚动条
+            if hsb.maximum() == 0:
+                hsb.setValue(0)  # 水平方向无滚动需求时对齐至起点
+            elif hsb.value() != 0:
+                self.smooth_scrollbar(hsb, 0, 180)  # 有滚动需求时平滑回到起点，避免遮挡
+            if vsb.maximum() == 0:
+                vsb.setValue(0)  # 垂直方向无滚动需求时对齐至起点
+
+            # 根据窗口尺寸调整表格内容字体大小（只影响表格内容）
+            self.update_table_font_by_window()  # 动态选择小/中/大字体并应用
+
+        # 根据窗口宽度重排输入区域，实现自动换行
+        try:
+            self.relayout_input_bar()
+        except Exception as e:
+            print(f"输入区域重排失败: {e}")
 
  
     
@@ -656,9 +709,19 @@ class TodoWidget(QMainWindow):
         # 更新分页标签与按钮启用状态，确保页码与按钮实时同步
         self.update_pagination_ui()  # 刷新分页显示元素
 
+        # 刷新后根据窗口尺寸更新表格内容字体，保持自适应体验
+        self.update_table_font_by_window()  # 动态应用字体大小
+
         # 重新连接 itemChanged 信号
         self.task_table.blockSignals(False)
         print("刷新表格显示-----信号已连接")
+
+        # 刷新后进行一次滚动条平滑校正：
+        # - 当水平滚动存在且当前位置非起点时，平滑滚动到起点以保证最后一列完整显示
+        # - 垂直方向保持当前位置（缩小时优先保证上方重要内容可见），仅在无滚动需求时归零
+        hsb = self.task_table.horizontalScrollBar()  # 获取水平滚动条
+        if hsb.maximum() > 0 and hsb.value() != 0:
+            self.smooth_scrollbar(hsb, 0, 180)  # 平滑复位到起点，避免遮挡最后一列
 
     def update_pagination_ui(self):
         """更新分页显示的标签与按钮状态"""  # 中文函数注释：用于刷新页码文本与按钮可用状态
@@ -802,8 +865,7 @@ class TodoWidget(QMainWindow):
         self.resizing = False
         self.resize_edge = None
         self.unsetCursor()
-        # 在鼠标释放时进行一次触顶判定并处理顶部收缩（简单有效，避免拖动过程中闪烁）
-        self.dock_check_and_collapse()  # 根据当前窗口位置决定是否收缩到标题栏
+        # 不再在释放时自动触发触顶收缩，避免误触
 
     def mouseMoveEvent(self, event):
         """鼠标移动事件"""
@@ -897,6 +959,16 @@ class TodoWidget(QMainWindow):
                 min-height: 22px;
                 max-height: 22px;
             }
+            #collapseButton {
+                background-color: #ff8ba7;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 2px 6px;
+            }
+            #collapseButton:hover {
+                background-color: #ff7096;
+            }
             QLineEdit, QComboBox, QDateTimeEdit {
                 background-color: white;
                 border: 1px solid #ffccd5;
@@ -944,14 +1016,98 @@ class TodoWidget(QMainWindow):
 
     def verify_column_widths(self):
         """验证并强制设置列宽"""
-        print("Initial column widths:", [self.task_table.columnWidth(i) for i in range(4)])
+        print("Initial column widths:", [self.task_table.columnWidth(i) for i in range(4)])  # 打印初始列宽
         
-        # 再次强制设置列宽
-        self.task_table.setColumnWidth(1, 45)
-        self.task_table.setColumnWidth(2, 45)
-        self.task_table.setColumnWidth(3, 45)
+        # 保持非首列固定宽度，避免被缩到过小
+        self.task_table.setColumnWidth(1, 80)   # 优先级列默认80
+        self.task_table.setColumnWidth(2, 50)   # 日期列默认50
+        self.task_table.setColumnWidth(3, 50)   # 完成列默认50
         
-        print("Final column widths:", [self.task_table.columnWidth(i) for i in range(4)])
+        print("Final column widths:", [self.task_table.columnWidth(i) for i in range(4)])  # 打印最终列宽
+
+    def update_table_font_by_window(self):
+        """根据窗口尺寸为表格内容选择合适的字体大小（小/中/大）"""
+        w, h = self.width(), self.height()  # 读取当前窗口宽高
+        # 简单的自适应阈值：低分辨率用小号，中等用中号，高分辨率用大号
+        if w <= 480 or h <= 360:
+            self.apply_table_font(11)  # 小字号：11px
+        elif w <= 640 or h <= 540:
+            self.apply_table_font(13)  # 中字号：13px
+        else:
+            self.apply_table_font(15)  # 大字号：15px
+
+    def relayout_input_bar(self):
+        """根据当前窗口宽度重排输入区域，实现操作栏自动换行显示"""
+        if not hasattr(self, 'input_widget'):  # 若无输入区域则直接返回
+            return
+        layout = self.input_widget.layout()  # 获取当前布局对象
+        if not isinstance(layout, QGridLayout):  # 若不是网格布局则返回（兼容旧逻辑）
+            return
+        # 清除现有布局项，准备重新放置
+        while layout.count():  # 循环移除所有项
+            item = layout.takeAt(0)  # 取出布局项
+            w = item.widget()  # 获取其中的控件
+            if w:  # 如果存在控件
+                w.setParent(self.input_widget)  # 保持控件仍属于输入区域
+        width = self.width()  # 读取当前窗口宽度
+        # 布局策略：宽>=420一行；300<=宽<420两行；宽<300多行竖排
+        if width >= 420:  # 宽屏：单行排列
+            layout.addWidget(self.task_input, 0, 0, 1, 3)  # 输入框占三列
+            layout.addWidget(self.priority_combo, 0, 3, 1, 1)  # 优先级占一列
+            layout.addWidget(self.deadline_edit, 0, 4, 1, 1)  # 日期占一列
+            layout.addWidget(self.add_button, 0, 5, 1, 1)  # 添加按钮占一列
+        elif width >= 300:  # 中等宽度：两行布局
+            layout.addWidget(self.task_input, 0, 0, 1, 6)  # 第一行仅输入框
+            layout.addWidget(self.priority_combo, 1, 0, 1, 2)  # 第二行左侧为优先级
+            layout.addWidget(self.deadline_edit, 1, 2, 1, 2)  # 第二行中间为日期
+            layout.addWidget(self.add_button, 1, 4, 1, 2)  # 第二行右侧为添加按钮
+        else:  # 窄宽：多行竖排，保证最小宽度下仍可操作
+            layout.addWidget(self.task_input, 0, 0, 1, 6)  # 第一行输入框
+            layout.addWidget(self.priority_combo, 1, 0, 1, 6)  # 第二行优先级
+            layout.addWidget(self.deadline_edit, 2, 0, 1, 6)  # 第三行日期
+            layout.addWidget(self.add_button, 3, 0, 1, 6)  # 第四行添加按钮
+
+    def apply_table_font(self, size_px: int):
+        """仅对表格内容及其单元格控件应用统一字号，不影响非表格区域"""
+        # 设置表格项字体（不影响标题栏与输入区）
+        table_font = QFont()  # 创建字体对象
+        table_font.setPixelSize(size_px)  # 使用像素字号，渲染更直观
+        self.task_table.setFont(table_font)  # 应用于表格
+        
+        # 通过样式为单元格控件设置字号（确保优先级下拉与日期按钮同步）
+        # 仅作用于表格内部控件，不改变全局其他控件字号
+        item_css = f"font-size: {size_px}px;"  # 生成统一字号样式
+        # 为现有可见行的控件应用字号样式
+        for row in range(self.task_table.rowCount()):  # 遍历当前页所有行
+            # 优先级下拉框字号
+            priority_widget = self.task_table.cellWidget(row, 1)  # 获取优先级列控件
+            if priority_widget is not None:
+                priority_widget.setStyleSheet(priority_widget.styleSheet() + f"\nQComboBox {{{item_css}}}")  # 追加字号样式
+            # 日期按钮字号
+            date_widget = self.task_table.cellWidget(row, 2)  # 获取日期列控件
+            if date_widget is not None:
+                date_widget.setStyleSheet(date_widget.styleSheet() + f"\nQPushButton {{{item_css}}}")  # 追加字号样式
+            # 操作列内的控件字号
+            op_widget = self.task_table.cellWidget(row, 3)  # 获取操作列容器
+            if op_widget is not None:
+                # 遍历其子控件（复选框/删除按钮），分别追加字号样式
+                for child in op_widget.findChildren(QWidget):  # 查找子控件
+                    # 对按钮添加字号
+                    if isinstance(child, QPushButton):
+                        child.setStyleSheet(child.styleSheet() + f"\nQPushButton {{{item_css}}}")  # 追加字号样式
+                    # 复选框通常不需要字号调整，保持现有小型尺寸以保证布局紧凑
+
+    def smooth_scrollbar(self, scrollbar, to_value: int, duration: int = 200):
+        """对滚动条进行平滑滚动动画，提升滚动体验"""
+        try:
+            anim = QPropertyAnimation(scrollbar, b"value", self)  # 创建属性动画，作用于滚动条的值
+            anim.setDuration(duration)  # 设置动画时长
+            anim.setStartValue(scrollbar.value())  # 起始值为当前滚动位置
+            anim.setEndValue(to_value)  # 结束值为目标位置
+            anim.setEasingCurve(QEasingCurve.Type.InOutCubic)  # 使用平滑的缓动曲线
+            anim.start()  # 启动动画
+        except Exception as e:
+            print(f"平滑滚动失败: {e}")  # 打印异常但不中断
 
 
     def toggle_task_completion(self, task, state):
@@ -1149,7 +1305,7 @@ class TodoWidget(QMainWindow):
             priority_combo.setCurrentText('不紧急不重要')
             task['priority'] = '不紧急不重要'
         
-        priority_combo.setFixedSize(100, 24)  # 增加宽度从50到100
+        priority_combo.setFixedSize(80, 24)  # 缩小默认宽度为80，匹配列宽策略
         
         # 获取当前优先级和完成状态
         current_priority = task['priority']

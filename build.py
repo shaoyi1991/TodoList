@@ -4,8 +4,16 @@ import json
 
 CONFIG_DATA = '''
 {
-    "current_version": "1.3.251110",
+    "current_version": "1.3.251113",
     "versions": [
+    {
+        "version": "1.3.251113",
+        "description": "1、双击标题栏隐藏窗口；2、列宽支持调整；3、窗口宽度支持更小。"
+      },
+    {
+        "version": "1.3.251112",
+        "description": "1、高度、宽度不再限制；2、字体根据窗口大小自适应"
+      },
     {
         "version": "1.3.251110",
         "description": "1、数据列表支持滚动；2、已完成事项按日期降序排序；3、增加分页功能；4、支持缩小到屏幕顶部。"
