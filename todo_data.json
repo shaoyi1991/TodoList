@@ -1,282 +1,61 @@
-[
-  {
-    "id": "ae836ab2-6393-4edd-a482-674d9cbaa272",
-    "text": "22222222222",
-    "priority": "不紧急不重要",
-    "deadline": "2025-11-18",
-    "completed": false
-  },
-  {
-    "id": "a3c52ea5-c6d6-4967-97f3-5ea980fce1bc",
-    "text": "55555555",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-21",
-    "completed": false
-  },
-  {
-    "id": "b9441426-f1bb-4ef8-af29-d7b08d312166",
-    "text": "222",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "1c8defb2-9473-4b7c-a879-ca8029438c28",
-    "text": "222222",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "b0e16173-7681-4f54-b1f4-7ea095f25a81",
-    "text": "222222222222",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "ef7bf3f4-ef8f-48b4-b691-8d6adacb5ea4",
-    "text": "22222222222222222222",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "e17e6bbf-9e87-4edd-b870-fd58852e99c5",
-    "text": "333",
-    "priority": "不紧急不重要",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "ebb963a4-3d72-4012-a128-9da6ea1215e4",
-    "text": "1",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "9fdc2acb-4e58-4773-90a4-1f41885019a4",
-    "text": "222222",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "13c4a600-6649-47e1-a02d-f9280e1d76a6",
-    "text": "33333",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "c368bf44-f18f-4670-82ac-643fea07098b",
-    "text": "44444",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "b213cc1f-e04f-433a-8cc9-625d9b0d6cca",
-    "text": "5",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "9bbe3c30-7a83-427f-b1da-0c3a894c6d6b",
-    "text": "6",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "9bf4f004-2ee6-4d13-ab13-6df49d69f420",
-    "text": "7",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "1ccf0182-9ac2-4475-9689-1a8814df6898",
-    "text": "000000000",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "839ad096-ce0b-4024-ade3-fcfd173d13bf",
-    "text": "00000000000",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "c5edc93e-6b48-49d1-9b69-cc1fd66a9ec4",
-    "text": "000000000000",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "305214f3-790f-4d7d-8935-5c665ccf4b6e",
-    "text": "999999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "3fbc0e5b-79f0-4525-bc6e-23ccf827c9cb",
-    "text": "999999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "03577396-86ba-4574-9ae7-fac441478ef0",
-    "text": "0000000000",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "05c1d574-2f47-4012-802b-6ff269939e5e",
-    "text": "----------",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "614baf56-8c9a-44ab-8c4e-7bce381319f2",
-    "text": "9999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "da4122e8-f24b-4c48-9686-d06cc6290efe",
-    "text": "88",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "440f4a7f-dff0-405e-be21-6df05a713e8d",
-    "text": "9999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "05f8a0a4-8db6-4b9e-8fad-bcbe279abbc5",
-    "text": "99999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "58c75cc6-cc47-4cc8-be0f-30f3b3b43c69",
-    "text": "999999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "c8dc818e-cf16-4b90-a0f7-afefe20b0051",
-    "text": "9999999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "b9ed4a92-742f-44ae-8212-042d694b5718",
-    "text": "999999999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "a5a874d8-51be-4cdc-8f60-3a9172963af9",
-    "text": "99999999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "cac441b3-0b2f-4043-aa82-3ddf7beffb61",
-    "text": "888888888",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": false
-  },
-  {
-    "id": "1c57bcca-552f-423e-9f2e-16ba16e8898f",
-    "text": "字体大小调整",
-    "priority": "紧急重要",
-    "deadline": "2025-11-12",
-    "completed": false
-  },
-  {
-    "id": "183bb820-c274-40eb-856a-1a1ec4988f8a",
-    "text": "44444444444444",
-    "priority": "紧急重要",
-    "deadline": "2025-11-21",
-    "completed": true
-  },
-  {
-    "id": "3c1cb053-408a-4225-88e7-870e28f9c478",
-    "text": "333333333333",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-20",
-    "completed": true
-  },
-  {
-    "id": "3202d1b2-4aa7-460b-87cc-c484c22c2916",
-    "text": "22222",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": true
-  },
-  {
-    "id": "7d8cf868-2e09-4a9a-a863-d837594418ac",
-    "text": "888888888",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": true
-  },
-  {
-    "id": "e893711d-12ce-4d16-aac5-8e6156531925",
-    "text": "999999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": true
-  },
-  {
-    "id": "d7b996b8-fa20-41d7-8d1d-5c7cc02824be",
-    "text": "9999999999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": true
-  },
-  {
-    "id": "beac4a7d-708d-484f-939e-a1d67ebb6e9f",
-    "text": "99999999",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": true
-  },
-  {
-    "id": "fd05b847-0ae8-4942-ad04-f7cbbd32aa64",
-    "text": "8",
-    "priority": "重要不紧急",
-    "deadline": "2025-11-10",
-    "completed": true
-  },
-  {
-    "id": "b19f4fc1-fa6b-4fef-8234-a052e127dcde",
-    "text": "111111111111113",
-    "priority": "不紧急不重要",
-    "deadline": "2024-11-20",
-    "completed": true
-  }
-]
+{
+  "tasks": [
+    {
+      "id": "ae836ab2-6393-4edd-a482-674d9cbaa272",
+      "text": "完成项目周报",
+      "priority": "紧急重要",
+      "deadline": "2025-12-12",
+      "completed": false
+    },
+    {
+      "id": "e17e6bbf-9e87-4edd-b870-fd58852e99c5",
+      "text": "缴纳本月电费",
+      "priority": "紧急重要",
+      "deadline": "2025-12-14",
+      "completed": false
+    },
+    {
+      "id": "a3c52ea5-c6d6-4967-97f3-5ea980fce1bc",
+      "text": "预约牙医检查",
+      "priority": "重要不紧急",
+      "deadline": "2025-12-20",
+      "completed": false
+    },
+    {
+      "id": "b0e16173-7681-4f54-b1f4-7ea095f25a81",
+      "text": "学习Python新特性",
+      "priority": "重要不紧急",
+      "deadline": "2026-01-10",
+      "completed": false
+    },
+    {
+      "id": "ebb963a4-3d72-4012-a128-9da6ea1215e4",
+      "text": "制定明年旅行计划",
+      "priority": "重要不紧急",
+      "deadline": "2025-12-30",
+      "completed": false
+    },
+    {
+      "id": "1c8defb2-9473-4b7c-a879-ca8029438c28",
+      "text": "购买生活用品",
+      "priority": "紧急不重要",
+      "deadline": "2025-12-13",
+      "completed": false
+    },
+    {
+      "id": "b9441426-f1bb-4ef8-af29-d7b08d312166",
+      "text": "整理电脑桌面文件",
+      "priority": "不紧急不重要",
+      "deadline": "2025-12-15",
+      "completed": true
+    },
+    {
+      "id": "9fdc2acb-4e58-4773-90a4-1f41885019a4",
+      "text": "清理未读邮件",
+      "priority": "不紧急不重要",
+      "deadline": "2025-12-18",
+      "completed": true
+    }
+  ],
+  "pomodoro_stats": {}
+}

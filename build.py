@@ -1,77 +1,61 @@
 import PyInstaller.__main__
 import os
-import json
+import sys
 
-CONFIG_DATA = '''
-{
-    "current_version": "1.3.251113",
-    "versions": [
-    {
-        "version": "1.3.251113",
-        "description": "1、双击标题栏隐藏窗口；2、列宽支持调整；3、窗口宽度支持更小。"
-      },
-    {
-        "version": "1.3.251112",
-        "description": "1、高度、宽度不再限制；2、字体根据窗口大小自适应"
-      },
-    {
-        "version": "1.3.251110",
-        "description": "1、数据列表支持滚动；2、已完成事项按日期降序排序；3、增加分页功能；4、支持缩小到屏幕顶部。"
-      },
-     {
-        "version": "1.3.250721",
-        "description": "兼容历史优先级数据，避免点击优先级闪退；取消鼠标滑动时会修改优先级"
-      },
-      {
-        "version": "1.3.250718",
-        "description": "修改优先级为四象限原则"
-      },
-      {
-        "version": "1.2.141119",
-        "description": "1、优先级编辑支持下来选择；2、日期编辑支持日历选择。"
-      },
-      {
-        "version": "1.0.141119",
-        "description": "1、支持表格内容编辑,双击修改(为了界面简洁，仅支持文本输入)。2、增加版本号显示及历史版本更新记录"
-      },
-      {
-        "version": "1.0.0",
-        "description": "Beta release with limited features."
-      }
-    ]
-}
-'''
+# 1. 获取脚本所在目录的绝对路径
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
-def get_current_version():
-    config = json.loads(CONFIG_DATA)
-    return config['current_version']
+# 2. 切换当前工作目录到脚本所在目录
+# 这确保了后续的相对路径（如 'todo.ico', 'main.py'）都能正确解析
+os.chdir(script_dir)
+
+# 3. 将脚本所在目录添加到 sys.path
+# 这确保了能够正确导入 core.config
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
+from core.config import get_current_version
 
 def build_exe():
+    print(f"Working directory: {os.getcwd()}")
+    
     # 确保图标文件存在
-    if not os.path.exists('todo.ico'):
-        print("Error: Icon file 'todo.ico' not found!")
+    icon_path = os.path.join(script_dir, 'todo.ico')
+    if not os.path.exists(icon_path):
+        print(f"Error: Icon file '{icon_path}' not found!")
         return
 
+    try:
+        version = get_current_version()
+    except Exception as e:
+        print(f"Error reading version: {e}")
+        return
+    
+    print(f"Building version: {version}")
+    
+    # 构建绝对路径的参数，防止路径混淆
+    main_script = os.path.join(script_dir, 'main.py')
+    
     # PyInstaller参数
     args = [
-        'todo_widget.py',  # 主程序文件
+        main_script,       # 主程序文件
         '--onefile',       # 打包成单个文件
         '--noconsole',     # 不显示控制台窗口
-        '--icon=todo.ico', # 使用图标
-        '--name=TodoListV{}'.format(get_current_version()), # 可执行文件名称
+        f'--icon={icon_path}', # 使用图标
+        f'--name=TodoListV{version}', # 可执行文件名称
         '--clean',         # 清理临时文件
-        '--hidden-import', 'win32com.client',  # 添加这行
+        '--hidden-import', 'win32com.client',
         # 使用--add-data参数来添加数据文件到打包后的可执行文件中
-        '--add-data', f'todo.ico{os.pathsep}.',  # 添加todo.ico图标文件
-        '--add-data', f'todo_data.json{os.pathsep}.',  # 添加todo_data.json数据文件
-        #'--add-data', f'version_config.json{os.pathsep}.',  # 添加version_config.json配置文件
+        f'--add-data', f'{icon_path}{os.pathsep}.',  # 添加todo.ico图标文件
+        f'--add-data', f'todo_data.json{os.pathsep}.',  # 添加todo_data.json数据文件
     ]
     
     # 执行打包
-    PyInstaller.__main__.run(args)
-    print("Build completed! Check the 'dist' folder for the executable.")
+    try:
+        PyInstaller.__main__.run(args)
+        print("Build completed! Check the 'dist' folder for the executable.")
+    except Exception as e:
+        print(f"Build failed: {e}")
 
 if __name__ == '__main__':
-    build_exe() 
-
-
+    build_exe()
